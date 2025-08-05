@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML即時プレビューツール</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .upload-area {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            transition: transform 0.3s ease;
+        }
+
+        .upload-area:hover {
+            transform: translateY(-5px);
+        }
+
+        .upload-area.drag-over {
+            background: #f0f4ff;
+            border: 3px dashed #667eea;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .file-input-label:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .preview-section {
+            display: none;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .preview-title {
+            font-size: 1.5em;
+            color: #667eea;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .preview-iframe {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .qr-section {
+            display: none;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .qr-code {
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            display: inline-block;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .url-display {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            word-break: break-all;
+            font-family: monospace;
+            color: #4a5568;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .feature {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .feature-title {
+            font-size: 1.2em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .error-message {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            
+            .preview-iframe {
+                height: 400px;
+            }
+            
+            .preview-header {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📱 HTML即時プレビューツール</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <h2>HTMLファイルをドロップまたは選択</h2>
+            
+            <div class="file-input-wrapper">
+                <input type="file" class="file-input" id="fileInput" accept=".html,.htm">
+                <label for="fileInput" class="file-input-label">ファイルを選択</label>
+            </div>
+            
+            <p style="color: #a0aec0; margin-top: 20px;">またはファイルをここにドラッグ&ドロップ</p>
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <div class="preview-header">
+                <h2 class="preview-title">プレビュー</h2>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="generateQR()">QRコード生成</button>
+                    <button class="btn btn-secondary" onclick="openInNewTab()">新しいタブで開く</button>
+                    <button class="btn btn-danger" onclick="resetUpload()">リセット</button>
+                </div>
+            </div>
+            <iframe class="preview-iframe" id="previewFrame"></iframe>
+        </div>
+
+        <div class="qr-section" id="qrSection">
+            <h2 style="color: #667eea; margin-bottom: 20px;">スマホで確認</h2>
+            <p>このQRコードをスマホでスキャンしてください</p>
+            <div id="qrcode" class="qr-code"></div>
+            <div class="url-display" id="urlDisplay"></div>
+            <p style="color: #718096; margin-top: 20px;">※ 同じネットワーク内からのみアクセス可能です</p>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">⚡</div>
+                <h3 class="feature-title">即時プレビュー</h3>
+                <p>ファイルを選択するだけで、すぐにプレビューを確認できます</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📱</div>
+                <h3 class="feature-title">QRコード生成</h3>
+                <p>QRコードをスキャンして、スマホですぐに確認</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🔒</div>
+                <h3 class="feature-title">プライバシー保護</h3>
+                <p>ファイルはブラウザ内で処理され、外部に送信されません</p>
+            </div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <script>
+        let currentBlob = null;
+        let currentUrl = null;
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('previewSection');
+        const previewFrame = document.getElementById('previewFrame');
+        const qrSection = document.getElementById('qrSection');
+        const errorMessage = document.getElementById('errorMessage');
+
+        // ドラッグ&ドロップの設定
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // ファイル選択の処理
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        function handleFile(file) {
+            // HTMLファイルかチェック
+            if (!file.type.includes('html') && !file.name.endsWith('.html') && !file.name.endsWith('.htm')) {
+                showError('HTMLファイルを選択してください');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target.result;
+                displayPreview(content);
+            };
+            reader.onerror = () => {
+                showError('ファイルの読み込みに失敗しました');
+            };
+            reader.readAsText(file);
+        }
+
+        function displayPreview(htmlContent) {
+            // Blobを作成
+            currentBlob = new Blob([htmlContent], { type: 'text/html' });
+            currentUrl = URL.createObjectURL(currentBlob);
+            
+            // iframeに表示
+            previewFrame.src = currentUrl;
+            previewSection.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+
+        function generateQR() {
+            if (!currentUrl) return;
+            
+            // QRコードセクションをクリア
+            const qrcodeDiv = document.getElementById('qrcode');
+            qrcodeDiv.innerHTML = '';
+            
+            // 現在のURLを表示（ローカルのBlob URLは実際にはスマホからアクセスできないため、説明を表示）
+            const urlDisplay = document.getElementById('urlDisplay');
+            urlDisplay.textContent = '注意: このプレビューは現在のブラウザ内でのみ有効です';
+            
+            // デモ用のQRコードを生成（実際の使用では、サーバーにアップロードして共有可能なURLを生成する必要があります）
+            new QRCode(qrcodeDiv, {
+                text: window.location.href,
+                width: 200,
+                height: 200,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            
+            qrSection.style.display = 'block';
+            
+            // 注意メッセージを表示
+            showError('注意: 実際にスマホで確認するには、ファイルをサーバーにアップロードする必要があります。このデモでは、同じデバイスでのプレビューのみ可能です。');
+        }
+
+        function openInNewTab() {
+            if (currentUrl) {
+                window.open(currentUrl, '_blank');
+            }
+        }
+
+        function resetUpload() {
+            if (currentUrl) {
+                URL.revokeObjectURL(currentUrl);
+            }
+            currentBlob = null;
+            currentUrl = null;
+            previewSection.style.display = 'none';
+            qrSection.style.display = 'none';
+            fileInput.value = '';
+            errorMessage.style.display = 'none';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
